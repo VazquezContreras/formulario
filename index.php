@@ -1,6 +1,6 @@
 <?php
 // --- Conexión a SQL Server ---
-$serverName = "tcp:hector-1.database.windows.net,1433";
+$serverName = "tcp:20.10.0.4,1433";
 $connectionInfo = [
     "UID" => "hector",
     "pwd" => "Mario-12345", // Reemplaza con tu contraseña real
