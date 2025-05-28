@@ -3,7 +3,7 @@
 $serverName = "tcp:hector-1.database.windows.net,1433";
 $connectionInfo = [
     "UID" => "hector",
-    "pwd" => "Mario-12345", // Reemplaza con tu contraseña real
+    "pwd" => "Mario-12345", // Reemplaza con tu contraseña real vdsdfdgfdg
     "Database" => "formulario_app",
     "LoginTimeout" => 30,
     "Encrypt" => 1,
