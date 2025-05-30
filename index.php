@@ -3,7 +3,7 @@
 $serverName = "tcp:bd-app-server.database.windows.net,1433";
 $connectionInfo = [
     "UID" => "Hector",
-    "pwd" => "Mario-12345", // Reemplaza con tu contraseña real
+    "pwd" => "Mario-12345",
     "Database" => "bd_app",
     "LoginTimeout" => 30,
     "Encrypt" => 1,
@@ -16,8 +16,28 @@ if ($conexion === false) {
     die("Error de conexión a SQL Server: " . print_r(sqlsrv_errors(), true));
 }
 
-// --- Insertar datos si se envió el formulario ---
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+// --- Simulación de detección de WAF ---
+$wafActivo = false;
+
+// Intento de inyección XSS para detectar WAF
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['test_waf'])) {
+    $testPayload = '<script>alert("TEST WAF")</script>';
+    
+    // Intento de inyección SQL para detectar WAF
+    $sqlTest = "SELECT * FROM usuarios WHERE nombre = '" . $testPayload . "'";
+    $stmt = sqlsrv_query($conexion, $sqlTest);
+    
+    if ($stmt === false) {
+        $errors = sqlsrv_errors();
+        // Si hay errores específicos de WAF (esto puede variar según la implementación)
+        if (isset($errors[0]['code']) && $errors[0]['code'] == 40500) {
+            $wafActivo = true;
+        }
+    }
+}
+
+// --- Insertar datos si se envió el formulario normal ---
+if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['test_waf'])) {
     $nombreUsuario = $_POST['nombre'];
     $correoUsuario = $_POST['correo'];
 
@@ -36,19 +56,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Formulario PHP - Captura y Consulta</title>
+    <title>Formulario PHP - Prueba WAF Azure</title>
+    <style>
+        .waf-status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .waf-on {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .waf-off {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
 </head>
 <body>
-    <h2>Pruebas de WAF</h2>
-    <div style="background-color: #f0f0f0; padding: 15px; margin-bottom: 20px;">
-        <h3>Instrucciones para probar WAF:</h3>
-        <ol>
-            <li><strong>Con WAF APAGADO:</strong> En el campo de nombre o correo escriba y guarde el comando: 
-                <code>&lt;script&gt;alert("EL WAF ESTA APAGADO")&lt;/script&gt;</code></li>
-            <li><strong>Con WAF PRENDIDO:</strong> Intente guardar el mismo comando: 
-                <code>&lt;script&gt;alert("EL WAF ESTA PRENDIDO")&lt;/script&gt;</code></li>
-        </ol>
-        <p>Si el WAF está funcionando correctamente, debería bloquear el segundo intento.</p>
+    <div class="waf-status <?php echo $wafActivo ? 'waf-on' : 'waf-off'; ?>">
+        <?php 
+        if ($wafActivo) {
+            echo '<script>alert("EL WAF ESTA PRENDIDO")</script>';
+            echo 'WAF DE AZURE: ACTIVADO - Su aplicación está protegida contra ataques.';
+        } else {
+            echo '<script>alert("EL WAF ESTA APAGADO")</script>';
+            echo 'WAF DE AZURE: DESACTIVADO - Su aplicación es vulnerable a ataques.';
+        }
+        ?>
     </div>
 
     <h2>Formulario de Captura</h2>
@@ -58,6 +97,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <label>Correo:</label><br>
         <input type="email" name="correo" required><br><br>
         <input type="submit" value="Guardar">
+    </form>
+
+    <!-- Formulario oculto para probar WAF -->
+    <form method="POST" action="" style="display: none;">
+        <input type="hidden" name="test_waf" value="1">
+        <input type="submit" id="wafTestSubmit">
     </form>
 
     <h2>Consulta de Información</h2>
@@ -91,5 +136,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         sqlsrv_close($conexion);
         ?>
     </table>
+
+    <script>
+        // Ejecutar prueba WAF automáticamente al cargar la página
+        window.onload = function() {
+            document.getElementById('wafTestSubmit').click();
+        };
+    </script>
 </body>
 </html>
