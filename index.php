@@ -17,7 +17,7 @@ if ($conexion === false) {
 }
 
 // --- Simulación de detección de WAF ---
-$wafActivo = false;
+$wafActivo = true;
 
 // Intento de inyección XSS para detectar WAF
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['test_waf'])) {
