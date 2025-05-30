@@ -3,7 +3,7 @@
 $serverName = "tcp:bd-app-server.database.windows.net,1433";
 $connectionInfo = [
     "UID" => "Hector",
-    "pwd" => "Mario-12345", // Reemplaza con tu contraseña real vdsdfdgfdg
+    "pwd" => "Mario-12345", // Reemplaza con tu contraseña real
     "Database" => "bd_app",
     "LoginTimeout" => 30,
     "Encrypt" => 1,
@@ -39,6 +39,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Formulario PHP - Captura y Consulta</title>
 </head>
 <body>
+    <h2>Pruebas de WAF</h2>
+    <div style="background-color: #f0f0f0; padding: 15px; margin-bottom: 20px;">
+        <h3>Instrucciones para probar WAF:</h3>
+        <ol>
+            <li><strong>Con WAF APAGADO:</strong> En el campo de nombre o correo escriba y guarde el comando: 
+                <code>&lt;script&gt;alert("EL WAF ESTA APAGADO")&lt;/script&gt;</code></li>
+            <li><strong>Con WAF PRENDIDO:</strong> Intente guardar el mismo comando: 
+                <code>&lt;script&gt;alert("EL WAF ESTA PRENDIDO")&lt;/script&gt;</code></li>
+        </ol>
+        <p>Si el WAF está funcionando correctamente, debería bloquear el segundo intento.</p>
+    </div>
+
     <h2>Formulario de Captura</h2>
     <form method="POST" action="">
         <label>Nombre:</label><br>
@@ -65,8 +77,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $hayRegistros = true;
                 echo "<tr>
                         <td>{$fila['id']}</td>
-                        <td>{$fila['nombre']}</td>
-                        <td>{$fila['correo']}</td>
+                        <td>".htmlspecialchars($fila['nombre'], ENT_QUOTES, 'UTF-8')."</td>
+                        <td>".htmlspecialchars($fila['correo'], ENT_QUOTES, 'UTF-8')."</td>
                       </tr>";
             }
             if (!$hayRegistros) {
