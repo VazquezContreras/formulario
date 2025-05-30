@@ -16,28 +16,33 @@ if ($conexion === false) {
     die("Error de conexión a SQL Server: " . print_r(sqlsrv_errors(), true));
 }
 
-// --- Simulación de detección de WAF ---
-$wafActivo = true;
+// --- Detección de WAF ---
+$wafActivo = false;
+$testResultado = '';
 
-// Intento de inyección XSS para detectar WAF
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['test_waf'])) {
-    $testPayload = '<script>alert("TEST WAF")</script>';
+// Procesar prueba WAF
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['waf_test'])) {
+    $testPayload = $_POST['waf_test'];
     
-    // Intento de inyección SQL para detectar WAF
-    $sqlTest = "SELECT * FROM usuarios WHERE nombre = '" . $testPayload . "'";
-    $stmt = sqlsrv_query($conexion, $sqlTest);
+    // Intento de ejecución directa (para probar WAF)
+    ob_start();
+    echo $testPayload;
+    $output = ob_get_clean();
     
-    if ($stmt === false) {
-        $errors = sqlsrv_errors();
-        // Si hay errores específicos de WAF (esto puede variar según la implementación)
-        if (isset($errors[0]['code']) && $errors[0]['code'] == 40500) {
-            $wafActivo = true;
-        }
+    // Verificar si el payload fue ejecutado o bloqueado
+    if (strpos($output, '<script>') !== false) {
+        $wafActivo = false;
+        $testResultado = '<div style="color:red;font-weight:bold;">WAF DESACTIVADO: El script se ejecutó correctamente</div>';
+        echo '<script>alert("EL WAF ESTA APAGADO");</script>';
+    } else {
+        $wafActivo = true;
+        $testResultado = '<div style="color:green;font-weight:bold;">WAF ACTIVADO: El script fue bloqueado</div>';
+        echo '<script>alert("EL WAF ESTA PRENDIDO");</script>';
     }
 }
 
 // --- Insertar datos si se envió el formulario normal ---
-if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['test_waf'])) {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['waf_test'])) {
     $nombreUsuario = $_POST['nombre'];
     $correoUsuario = $_POST['correo'];
 
@@ -75,16 +80,43 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['test_waf'])) {
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        .waf-test-section {
+            margin: 30px auto;
+            padding: 20px;
+            background: #f0f0f0;
+            border: 2px solid red;
+            max-width: 500px;
+        }
     </style>
 </head>
 <body>
+    <!-- ==== [SECCIÓN DE PRUEBA WAF ] ==== -->
+    <div class="waf-test-section">
+        <h3>Prueba WAF</h3>
+        <?php if (!empty($testResultado)) echo $testResultado; ?>
+        
+        <form method="post">
+            <input
+                type="text"
+                name="waf_test"
+                style="width: 95%; padding: 4px; margin-bottom: 4px;"
+                placeholder='Ingrese: &lt;script&gt;alert("TEST")&lt;/script&gt;'
+            >
+            <button type="submit">Probar WAF</button>
+        </form>
+        
+        <p><strong>Instrucciones:</strong></p>
+        <ol>
+            <li>Con WAF <strong>apagado</strong>, ingrese: <code>&lt;script&gt;alert("EL WAF ESTA APAGADO")&lt;/script&gt;</code></li>
+            <li>Con WAF <strong>prendido</strong>, ingrese: <code>&lt;script&gt;alert("EL WAF ESTA PRENDIDO")&lt;/script&gt;</code></li>
+        </ol>
+    </div>
+
     <div class="waf-status <?php echo $wafActivo ? 'waf-on' : 'waf-off'; ?>">
         <?php 
         if ($wafActivo) {
-            echo '<script>alert("EL WAF ESTA PRENDIDO")</script>';
             echo 'WAF DE AZURE: ACTIVADO - Su aplicación está protegida contra ataques.';
         } else {
-            echo '<script>alert("EL WAF ESTA APAGADO")</script>';
             echo 'WAF DE AZURE: DESACTIVADO - Su aplicación es vulnerable a ataques.';
         }
         ?>
@@ -97,12 +129,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['test_waf'])) {
         <label>Correo:</label><br>
         <input type="email" name="correo" required><br><br>
         <input type="submit" value="Guardar">
-    </form>
-
-    <!-- Formulario oculto para probar WAF -->
-    <form method="POST" action="" style="display: none;">
-        <input type="hidden" name="test_waf" value="1">
-        <input type="submit" id="wafTestSubmit">
     </form>
 
     <h2>Consulta de Información</h2>
@@ -136,12 +162,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['test_waf'])) {
         sqlsrv_close($conexion);
         ?>
     </table>
-
-    <script>
-        // Ejecutar prueba WAF automáticamente al cargar la página
-        window.onload = function() {
-            document.getElementById('wafTestSubmit').click();
-        };
-    </script>
 </body>
 </html>
